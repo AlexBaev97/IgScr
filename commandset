@@ -1,5 +1,5 @@
 0) создадим скрипт, который мы хотим дать испольнять удаленным пользакам
-root@alex2machine:/home/alex2# cat /home/alex2/scripts/script1.sh
+root@alex2machine:/home/alex2# cat /home/alex2/scripts/script1/script1.sh
 #!/bin/bash
 while read line; do
 	date=$(date)
@@ -32,6 +32,9 @@ Created symlink /etc/systemd/system/sockets.target.wants/remote-script1-call.soc
 root@alex2machine:~# systemctl start remote-script1-call.socket
 
 
+Проверить синтаксис можно с помощью команды systemd-analyze verify /etc/systemd/system/<unit_name>
+root@alex2machine:/etc/systemd/system# systemctl daemon-reload  - перечитать все юниты
+
   
 2) Создание шаблона сервиса
 root@alex2machine:~# cat << EOF > /etc/systemd/system/remote-script1-call@.service
@@ -41,7 +44,7 @@ Requires=remote-script1-call.socket
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /home/alex2/scripts/script1.sh
+ExecStart=/bin/bash /home/alex2/scripts/script1/script1.sh
 StandardInput=socket
 StandardError=journal
 Restart=on-failure
@@ -50,9 +53,9 @@ EOF
 
 3) Теперь мы можем активировать скрипт через сокет: echo "START" | nc 127.0.0.1 50000
 
-4) Настроим TLS через nginx и бэкенд в виде сервера FLASK на python
+4) Настроим HTTPS через nginx и бэкенд в виде сервера FLASK на python
 Устанавливаем nginx 
-  root@alex2machine:/home/alex2# apt-get install nginx
+  root@alex2machine:/home/alex2# apt-get -y install nginx
 Выпускаем сертификат для нашего сайта nginx (в директории /home/alex2/certs/script1-certs)
   root@alex2machine:/home/alex2/certs/script1-certs# openssl genrsa -out script1-private.key 2048 ### создаем приватный ключ
   root@alex2machine:/home/alex2/certs/script1-certs# openssl req -new -key script1-private.key -out script1.csr ### создаем cert sign request для УЦ
@@ -60,14 +63,14 @@ EOF
 Certificate request self-signature ok
 subject=C = RU, ST = Golovkovo, L = Golovkovo, O = Leha-Organization, OU = Leha, CN = Leha-server, emailAddress = alexbaevv@gmail.com
 
-Создаем конфигурацию виртуального хоста (сайта): добавляем файл конфигурации в директорию /etc/nginx/sites-available/script1-site и делаем символическую ссылку на этот конфиг из директории /etc/nginx/sites-enabled/ для активации виртуального хоста
+Создаем конфигурацию виртуального хоста (сайта) для nginx: добавляем файл конфигурации в директорию /etc/nginx/sites-available/script1-site и делаем символическую ссылку на этот конфиг из директории /etc/nginx/sites-enabled/ для активации виртуального хоста
 root@alex2machine:/etc/nginx/sites-available# cat << EOF > /etc/nginx/sites-available/script1-site
 server {
     listen 443 ssl;
     server_name 192.168.194.130;
 
-    ssl_certificate /home/alex2/certs/script1-certs/script1-cert.pem
-    ssl_certificate_key /home/alex2/certs/script1-certs/script1-private.key
+    ssl_certificate /home/alex2/certs/script1-certs/script1-cert.pem;
+    ssl_certificate_key /home/alex2/certs/script1-certs/script1-private.key;
 
     location /script1/execute {
         proxy_pass http://127.0.0.1:50001;
@@ -78,6 +81,7 @@ server {
     }
 }
 EOF
+nginx будет передавать трафик по контексту /script1/execute на сокет 127.0.0.1:50001, на котором будет запущен Flask-сервер
 Создаем символическую ссылку на наш конфигурационный файл
 root@alex2machine:/etc/nginx/sites-available# ln -s /etc/nginx/sites-available/script1-site /etc/nginx/sites-enabled/
 root@alex2machine:/etc/nginx/sites-enabled# ls -lah
@@ -87,9 +91,52 @@ drwxr-xr-x 8 root root 4,0K янв 31 18:00 ..
 lrwxrwxrwx 1 root root   34 янв 31 18:00 default -> /etc/nginx/sites-available/default
 lrwxrwxrwx 1 root root   39 янв 31 18:59 script1-site -> /etc/nginx/sites-available/script1-site
 
+Проверим синтакксис конфигурационного файла 
+root@alex2machine:/etc/nginx/sites-enabled# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+
+5) Настраиваем Flask-сервер
+Устанавливаем python:
+root@alex2machine:/# apt-get -y install python3
+Создаем файл сервера Flask:
+cat << EOF > /home/alex2/scripts/script1/flask-server.py
+from flask import Flask, request
+import subprocess
+import logging
+
+logging.basicConfig(
+    filename='/home/alex2/scripts/script1/access.log',
+    filemode='a',
+    formate'%(asctime)s %(levelname)s: %(message)s',
+    level=logging.INFO
+)
+
+app = Flask(__name__)
+
+@app.route('/script1/execute', methods=['POST'])
+def start_script():
+    data = request.get_data(as_text=True)
+    if data == "START":
+        subprocess.Popen('echo "START" | nc 127.0.0.1 50000', shell=True)
+        response= 'Scrip1 executed'
+        log_message = f'OK:{response},{200}'
+        logging.info(log_message)
+        return response, 200
+    else:
+        response = 'Wrong argument, please send "START"'
+        log_message = f'FAILURE: {response}, {400}'
+        logging.warning(log_message)
+        return response, 400
+
+if __name__ == '__main__':
+    app.run('host=127.0.0.1', port=50001)
+EOF
 
 
 
+6) Обернем Flask в systemd-юнит
 
 
 
