@@ -1,0 +1,95 @@
+0) создадим скрипт, который мы хотим дать испольнять удаленным пользакам
+root@alex2machine:/home/alex2# cat /home/alex2/scripts/script1.sh
+#!/bin/bash
+while read line; do
+	date=$(date)
+	if [[ "$line" == "START" ]]; then
+		echo "Today is $date, good day!" >> /home/alex2/1.txt
+		break
+	else
+		echo "Wrong argument" >> /home/alex2/2.txt
+		break
+	fi
+done
+
+1) создание и активация сокета localhost:50000
+root@alex2machine:~# cat << EOF > /etc/systemd/system/remote-script1-call.socket 
+[Unit]
+Description=remote call of script1 by non-root-user
+After=network.target
+
+[Socket]
+ListenStream=127.0.0.1:50000
+Accept=true
+
+[Install]
+WantedBy=sockets.target
+EOF
+
+Добавляем юнит в автозагрузку и активируем:
+root@alex2machine:~# systemctl enable remote-script1-call.socket 
+Created symlink /etc/systemd/system/sockets.target.wants/remote-script1-call.socket → /etc/systemd/system/remote-script1-call.socket.
+root@alex2machine:~# systemctl start remote-script1-call.socket
+
+
+  
+2) Создание шаблона сервиса
+root@alex2machine:~# cat << EOF > /etc/systemd/system/remote-script1-call@.service
+[Unit]
+Description=service for run remote called script by non-root users
+Requires=remote-script1-call.socket
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /home/alex2/scripts/script1.sh
+StandardInput=socket
+StandardError=journal
+Restart=on-failure
+TimeoutStopSec=1
+EOF
+
+3) Теперь мы можем активировать скрипт через сокет: echo "START" | nc 127.0.0.1 50000
+
+4) Настроим TLS через nginx и бэкенд в виде сервера FLASK на python
+Устанавливаем nginx 
+  root@alex2machine:/home/alex2# apt-get install nginx
+Выпускаем сертификат для нашего сайта nginx (в директории /home/alex2/certs/script1-certs)
+  root@alex2machine:/home/alex2/certs/script1-certs# openssl genrsa -out script1-private.key 2048 ### создаем приватный ключ
+  root@alex2machine:/home/alex2/certs/script1-certs# openssl req -new -key script1-private.key -out script1.csr ### создаем cert sign request для УЦ
+  root@alex2machine:/home/alex2/certs/script1-certs# openssl x509 -req -days 3650 -in script1.csr -signkey script1-private.key -out script1-cert.pem ### подписываем сертификат только что созданным приватным ключом 
+Certificate request self-signature ok
+subject=C = RU, ST = Golovkovo, L = Golovkovo, O = Leha-Organization, OU = Leha, CN = Leha-server, emailAddress = alexbaevv@gmail.com
+
+Создаем конфигурацию виртуального хоста (сайта): добавляем файл конфигурации в директорию /etc/nginx/sites-available/script1-site и делаем символическую ссылку на этот конфиг из директории /etc/nginx/sites-enabled/ для активации виртуального хоста
+root@alex2machine:/etc/nginx/sites-available# cat << EOF > /etc/nginx/sites-available/script1-site
+server {
+    listen 443 ssl;
+    server_name 192.168.194.130;
+
+    ssl_certificate /home/alex2/certs/script1-certs/script1-cert.pem
+    ssl_certificate_key /home/alex2/certs/script1-certs/script1-private.key
+
+    location /script1/execute {
+        proxy_pass http://127.0.0.1:50001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+Создаем символическую ссылку на наш конфигурационный файл
+root@alex2machine:/etc/nginx/sites-available# ln -s /etc/nginx/sites-available/script1-site /etc/nginx/sites-enabled/
+root@alex2machine:/etc/nginx/sites-enabled# ls -lah
+итого 8,0K
+drwxr-xr-x 2 root root 4,0K янв 31 18:59 .
+drwxr-xr-x 8 root root 4,0K янв 31 18:00 ..
+lrwxrwxrwx 1 root root   34 янв 31 18:00 default -> /etc/nginx/sites-available/default
+lrwxrwxrwx 1 root root   39 янв 31 18:59 script1-site -> /etc/nginx/sites-available/script1-site
+
+
+
+
+
+
+
