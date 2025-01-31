@@ -34,7 +34,7 @@ Restart=on-failure
 TimeoutStopSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.tar
 ###
 
 Далее добавляем эти юниты в автозагрузку системы и активируем сокет:
@@ -104,3 +104,16 @@ def start_script():
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=50001)
 ###
+
+[Unit]
+Description=Server Flask for script1 in /home/alex/scripts/
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/alex/scripts/script1/python-activate-script.py
+Restart=on-failure
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target
