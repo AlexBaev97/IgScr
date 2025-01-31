@@ -100,6 +100,14 @@ nginx: configuration file /etc/nginx/nginx.conf test is successful
 5) Настраиваем Flask-сервер
 Устанавливаем python:
 root@alex2machine:/# apt-get -y install python3
+Устанавливаем пакеты для создания виртуального окружения 
+apt-get -y install python3.12-venv
+В директории проекта скрипта (/home/alex2/scripts/script1) создаем виртуальное окружение для установки Flask и активируем его
+root@alex2machine:/home/alex2/scripts/script1# python3 -m venv flask_venv
+root@alex2machine:/home/alex2/scripts/script1# source ./flask_venv/bin/activate
+
+
+
 Создаем файл сервера Flask:
 cat << EOF > /home/alex2/scripts/script1/flask-server.py
 from flask import Flask, request
