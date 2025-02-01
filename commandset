@@ -6,9 +6,6 @@ while read line; do
 	if [[ "$line" == "START" ]]; then
 		echo "Today is $date, good day!" >> /home/alex2/1.txt
 		break
-	else
-		echo "Wrong argument" >> /home/alex2/2.txt
-		break
 	fi
 done
 
@@ -97,27 +94,32 @@ nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 
 
-5) Настраиваем Flask-сервер
+5) Настраиваем Flask-сервер и настраиваем систему
 Устанавливаем python:
 root@alex2machine:/# apt-get -y install python3
 Устанавливаем пакеты для создания виртуального окружения 
 apt-get -y install python3.12-venv
 В директории проекта скрипта (/home/alex2/scripts/script1) создаем виртуальное окружение для установки Flask и активируем его
-root@alex2machine:/home/alex2/scripts/script1# python3 -m venv flask_venv
+root@alex2machine:/home/alex2/scripts/script1# python3 -m venv flask_venv ### -m указывает на модуль, который мы хотим использовать, venv - модуль для создания новой виртуальной среды. 
 root@alex2machine:/home/alex2/scripts/script1# source ./flask_venv/bin/activate
+После активации venv устанавливаем через pip flask:
+(flask_venv) root@alex2machine:/home/alex2/scripts/script1/flask_venv# pip install flask
+
 
 
 
 Создаем файл сервера Flask:
 cat << EOF > /home/alex2/scripts/script1/flask-server.py
-from flask import Flask, request
+#!/home/alex2/scripts/script1/flask_venv/bin/python3
+from flask import Flask,  request
 import subprocess
 import logging
 
 logging.basicConfig(
     filename='/home/alex2/scripts/script1/access.log',
     filemode='a',
-    formate'%(asctime)s %(levelname)s: %(message)s',
+    format='%(asctime)s %(levelname)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
     level=logging.INFO
 )
 
@@ -127,24 +129,43 @@ app = Flask(__name__)
 def start_script():
     data = request.get_data(as_text=True)
     if data == "START":
-        subprocess.Popen('echo "START" | nc 127.0.0.1 50000', shell=True)
-        response= 'Scrip1 executed'
-        log_message = f'OK:{response},{200}'
+        subprocess.Popen('echo "START" | /usr/bin/nc 127.0.0.1 50000', shell=True)
+        response = 'Script1 executed'
+        log_message = f"OK: {response},{200}"
         logging.info(log_message)
         return response, 200
     else:
-        response = 'Wrong argument, please send "START"'
-        log_message = f'FAILURE: {response}, {400}'
-        logging.warning(log_message)
+        response = 'Wrong Argument. Send "START" to execute script1'
+        log_message = f"{response},{400}"
+        logging.error(log_message)
+        logging.info(f"Recieved data: {data}")
         return response, 400
 
 if __name__ == '__main__':
-    app.run('host=127.0.0.1', port=50001)
+    app.run(host='127.0.0.1', port=50001)
+
 EOF
 
 
 
 6) Обернем Flask в systemd-юнит
+Создаем файл юнита
+cat << EOF > 
+[Unit]
+Description=flask-server-for-script1
+After=network.target
 
+[Service]
+Type=simple
+Environment="PATH=$PATH:/home/alex2/scripts/script1/flask_venv" ### Указываем использовать такие переменные для процесса
+ExecStart=/home/alex2/scripts/script1/flask_venv/bin/python /home/alex2/scripts/script1/flask-server.py ### Хоть /home/alex2/scripts/script1/flask_venv/bin/python всего лишь символическая ссылка на /usr/bin/python3, однако разница в том, что при обращении к бинарю по такому пути инициализируется окружение и подтягиваются модули из указанной виртуальной среды, а не из system-wide среды, в противном случае python не сможет обнаружить flask-модули
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=5
 
+[Install]
+WantedBy=multi-user.target
+EOF
+
+7) Теперь выполнение скрипта можно запустить с удаленного хоста следующей командой curl -X POST -d 'START' https://192.168.194.130/script1/execute
 
