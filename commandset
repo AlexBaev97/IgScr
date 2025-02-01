@@ -34,7 +34,7 @@ root@alex2machine:/etc/systemd/system# systemctl daemon-reload  - перечит
 
   
 2) Создание шаблона сервиса
-root@alex2machine:~# cat << EOF > /etc/systemd/system/remote-script1-call@.service
+root@alex2machine:~# cat << EOF > /etc/systemd/system/remote-script1-call@.service ### символ @ в конце имени обязателен для указания, что этот юнит - шаблон для запуска сервиса
 [Unit]
 Description=service for run remote called script by non-root users
 Requires=remote-script1-call.socket
