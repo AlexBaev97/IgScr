@@ -167,5 +167,5 @@ TimeoutStopSec=5
 WantedBy=multi-user.target
 EOF
 
-7) Теперь выполнение скрипта можно запустить с удаленного хоста следующей командой curl -X POST -d 'START' https://192.168.194.130/script1/execute
+7) Теперь выполнение скрипта можно запустить с удаленного хоста следующей командой curl -X POST -d START https://192.168.194.130/script1/execute
 
