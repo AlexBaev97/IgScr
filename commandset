@@ -116,7 +116,7 @@ import subprocess
 import logging
 
 logging.basicConfig(
-    filename='/home/alex2/scripts/script1/access.log',
+    filename='/home/alex2/scripts/script1/access.log', ### логирование всех успешных и неуспешных попыток запуска скрипта в этот файл
     filemode='a',
     format='%(asctime)s %(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
