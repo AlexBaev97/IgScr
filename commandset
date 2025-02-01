@@ -150,7 +150,7 @@ EOF
 
 6) Обернем Flask в systemd-юнит
 Создаем файл юнита
-cat << EOF > 
+cat << EOF > /etc/systemd/system/flask-server-script1.service
 [Unit]
 Description=flask-server-for-script1
 After=network.target
