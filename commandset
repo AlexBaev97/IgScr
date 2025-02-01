@@ -100,7 +100,7 @@ root@alex2machine:/# apt-get -y install python3
 Устанавливаем пакеты для создания виртуального окружения 
 root@alex2machine:/# apt-get -y install python3.12-venv
 В директории проекта скрипта (/home/alex2/scripts/script1) создаем виртуальное окружение для установки Flask и активируем его
-root@alex2machine:/home/alex2/scripts/script1# python3 -m venv flask_venv ### -m указывает на модуль, который мы хотим использовать, venv - модуль для создания новой виртуальной среды. 
+root@alex2machine:/home/alex2/scripts/script1# python3 -m venv flask_venv ### -m указывает на модуль, который мы хотим использовать, venv - модуль для создания новой виртуальной среды, flask_venv - её имя. 
 root@alex2machine:/home/alex2/scripts/script1# source ./flask_venv/bin/activate
 После активации venv устанавливаем через pip flask:
 (flask_venv) root@alex2machine:/home/alex2/scripts/script1/flask_venv# pip install flask
