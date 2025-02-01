@@ -8,7 +8,7 @@ while read line; do
 		break
 	fi
 done
-
+В данном случае сервер доступен по ip-адресу 192.168.194.130
 1) создание и активация сокета localhost:50000
 root@alex2machine:~# cat << EOF > /etc/systemd/system/remote-script1-call.socket 
 [Unit]
@@ -64,7 +64,7 @@ subject=C = RU, ST = Golovkovo, L = Golovkovo, O = Leha-Organization, OU = Leha,
 root@alex2machine:/etc/nginx/sites-available# cat << EOF > /etc/nginx/sites-available/script1-site
 server {
     listen 443 ssl;
-    server_name 192.168.194.130;
+    server_name 192.168.194.130; ### 192.168.194.130 - адрес сетевого интерфейса сервера
 
     ssl_certificate /home/alex2/certs/script1-certs/script1-cert.pem;
     ssl_certificate_key /home/alex2/certs/script1-certs/script1-private.key;
