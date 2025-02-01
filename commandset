@@ -1,4 +1,4 @@
-0) создадим скрипт, который мы хотим дать испольнять удаленным пользакам
+0) создадим скрипт, который мы хотим дать испольнять удаленным пользователям
 root@alex2machine:/home/alex2# cat /home/alex2/scripts/script1/script1.sh
 #!/bin/bash
 while read line; do
