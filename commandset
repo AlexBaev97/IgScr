@@ -50,7 +50,7 @@ EOF
 
 3) Теперь мы можем активировать скрипт через сокет: echo "START" | nc 127.0.0.1 50000
 
-4) Настроим HTTPS через nginx и бэкенд в виде сервера FLASK на python
+4) Настроим HTTPS через nginx и бэкенд в виде сервера Flask на Python
 Устанавливаем nginx 
   root@alex2machine:/home/alex2# apt-get -y install nginx
 Выпускаем сертификат для нашего сайта nginx (в директории /home/alex2/certs/script1-certs)
